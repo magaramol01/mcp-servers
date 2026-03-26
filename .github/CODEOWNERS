@@ -1,0 +1,14 @@
+# Vessel Tracker — owned by backend team
+packages/mcp-vessel-tracker/ @fleet-orion/backend-team
+
+# Port Analytics — owned by analytics team
+packages/mcp-port-analytics/ @fleet-orion/analytics-team
+
+# Alerts Service — owned by notifications team
+packages/mcp-alerts-service/ @fleet-orion/notifications-team
+
+# Shared utils — requires senior review
+shared/ @fleet-orion/senior-engineers
+
+# CI / Infrastructure
+.github/ @fleet-orion/devops-team

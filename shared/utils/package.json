@@ -1,0 +1,29 @@
+{
+  "name": "@fleet-orion/utils",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared utilities for Fleet Orion MCP servers",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "mongodb": "^6.10.0"
+  },
+  "devDependencies": {
+    "@fleet-orion/tsconfig": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3"
+  }
+}
