@@ -28,3 +28,4 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+.agent/context/env.md
