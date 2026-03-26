@@ -200,58 +200,143 @@ MONGO_URI=mongodb://localhost:27017 node packages/mcp-vessel-tracker/dist/index.
 ## 6. Testing Your MCP Server
 
 All servers use **Streamable HTTP** (`StreamableHTTPServerTransport`). The server
-runs as a regular HTTP service on a configured port. Clients connect via HTTP — not
-by launching the server as a subprocess.
+runs as a regular HTTP service on a configured port. Clients connect via HTTP.
 
-### Method 1 — MCP Inspector (recommended)
+---
 
-The official MCP Inspector connects to an HTTP endpoint and lets you list and
-call tools interactively.
+### Method 1 — MCP Inspector (recommended for development)
+
+> **Official docs:** https://modelcontextprotocol.io/docs/tools/inspector
+
+The **MCP Inspector** is an interactive, browser-based developer tool for testing
+and debugging MCP servers. It acts as a real MCP client — connecting to your server
+over HTTP, discovering tools, and letting you call them with custom inputs.
+
+#### Installation & Launch
+
+No global install needed — run it with `npx`:
 
 ```bash
-# 1. Build the server
-pnpm turbo run build --filter=@your-org/mcp-<name>
-
-# 2. Start the HTTP server
-PORT=3000 DATABASE_URI=<uri> node packages/mcp-<name>/dist/index.js
-
-# 3. In another terminal, connect the inspector
+# Connect to a running Streamable HTTP server
 npx @modelcontextprotocol/inspector http://localhost:3000/mcp
-# → opens http://localhost:5173
+
+# You can also pass env vars and args when connecting to a local subprocess server
+npx @modelcontextprotocol/inspector <command> <arg1> <arg2>
 ```
 
-From the Inspector UI you can:
-- Browse all registered tools and their input schemas
-- Call any tool with custom arguments
-- Inspect raw JSON-RPC request/response pairs
-- View SSE stream events in real time
+#### Full Workflow
+
+```bash
+# Step 1 — Build the server
+pnpm turbo run build --filter=@your-org/mcp-<name>
+
+# Step 2 — Set env vars and start the HTTP server
+PORT=3000 DATABASE_URI=<your-uri> node packages/mcp-<name>/dist/index.js
+
+# Step 3 — In a second terminal, launch the Inspector
+npx @modelcontextprotocol/inspector http://localhost:3000/mcp
+# → Browser opens at http://localhost:5173
+```
+
+#### Inspector UI — Feature Overview
+
+##### Server Connection Pane (left sidebar)
+- Select the **transport type** (Streamable HTTP for our servers)
+- Enter the server URL (`http://localhost:3000/mcp`)
+- Shows current connection status and protocol version negotiated
+
+##### Tools Tab ⭐ (most used)
+- Lists **all registered tools** with names and descriptions
+- Shows the **full JSON schema** of every input field
+- Lets you **fill in arguments** and execute the tool
+- Displays the **raw tool result** exactly as the LLM would receive it
+- Highlights validation errors if you pass wrong input types
+
+##### Resources Tab
+- Lists any static resources your server exposes (file previews, DB schemas, etc.)
+- Shows resource metadata: MIME type and description
+- Allows reading resource content directly
+- Supports subscription testing for live resources
+
+##### Prompts Tab
+- Displays available prompt templates if your server defines them
+- Shows each prompt's arguments and descriptions
+- Lets you preview the full generated message with custom argument values
+
+##### Notifications Pane (bottom)
+- Shows **all raw JSON-RPC messages** in both directions (request + response)
+- Displays server log messages and notifications in real time
+- Essential for debugging session errors, malformed responses, or unexpected tool failures
+
+---
+
+#### Development Workflow with Inspector
+
+```
+1. Start Development
+   ├── Launch Inspector pointing at your server URL
+   ├── Verify the connection succeeds (session ID issued)
+   └── Check "capabilities" in the connection pane — tools should appear
+
+2. Iterative Testing
+   ├── Edit your tool handler code
+   ├── Rebuild: pnpm turbo run build --filter=@your-org/mcp-<name>
+   ├── Restart the server
+   ├── Click "Reconnect" in the Inspector (no browser refresh needed)
+   └── Re-test the affected tool
+
+3. Test Edge Cases
+   ├── Pass invalid input types → verify your zod schema rejects them
+   ├── Omit required fields → confirm correct error response
+   ├── Pass boundary values (limit=0, limit=101) → check clamping
+   └── Simulate concurrent calls → watch the Notifications pane for ordering
+```
+
+#### What to Check Before Shipping a Tool
+
+| Check | How to verify in Inspector |
+|-------|---------------------------|
+| Tool appears with correct name | Tools tab → see the list |
+| Description is clear and specific | Tools tab → hover the tool name |
+| All input fields have descriptions | Tools tab → expand the schema |
+| Valid input returns correct JSON | Execute with good data, inspect result |
+| Invalid input returns JSON-RPC error | Execute with bad data, check Notifications pane |
+| Empty results return `[]` not `null` | Filter for no matches, check result |
+| Result is pretty-printed JSON | Inspect `content[0].text` in the response |
+
+---
 
 ### Method 2 — curl (quick sanity check)
 
 Streamable HTTP is standard HTTP, so you can test with `curl`:
 
 ```bash
-# Step 1: Initialize a session
+# Step 1: Initialize a session (returns Mcp-Session-Id in response body or header)
 curl -s -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0.0.1"}}}'
-# extract Mcp-Session-Id from the response headers or body
 
 # Step 2: List available tools
 curl -s -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: <session-id-from-step-1>" \
+  -H "Mcp-Session-Id: <id-from-step-1>" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 
 # Step 3: Call a specific tool
 curl -s -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -H "Mcp-Session-Id: <session-id-from-step-1>" \
+  -H "Mcp-Session-Id: <id-from-step-1>" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"your_tool_name","arguments":{"key":"value"}}}'
+
+# Step 4: Terminate session
+curl -X DELETE http://localhost:3000/mcp \
+  -H "Mcp-Session-Id: <id-from-step-1>"
 ```
+
+---
 
 ### Method 3 — Register in Claude Desktop (end-to-end)
 
@@ -273,27 +358,34 @@ Edit `~/.config/claude/claude_desktop_config.json` (Linux) or
 }
 ```
 
-Each server must be **already running** before starting Claude Desktop.
-The server registers under the 🔌 icon in the chat interface.
+> Each server must be **already running** before starting Claude Desktop.
+> Servers appear under the 🔌 icon in the chat interface.
+
+---
 
 ### Method 4 — Vitest unit tests (business logic only)
 
 For pure business logic (helpers, transformations), extract tool handlers
-to separate files and unit-test them:
+to separate files and unit-test them independently of the HTTP layer:
 
 ```
 packages/<server-name>/
 └── src/
-    ├── index.ts           ← Express server + tool registrations
+    ├── index.ts               ← Express server + tool registrations
     ├── tools/
-    │   └── getUser.ts     ← extract handler logic here
+    │   └── getItem.ts         ← extract handler logic here
     └── tools/__tests__/
-        └── getUser.test.ts
+        └── getItem.test.ts    ← unit test the handler in isolation
 ```
 
 ```bash
+# Add vitest to the package
 pnpm add -D vitest --filter=@your-org/mcp-<name>
-# add "test": "vitest run" to the package's scripts
+
+# Add to that package's package.json scripts:
+# "test": "vitest run"
+
+# Run tests across all packages via turbo
 pnpm turbo run test
 ```
 
