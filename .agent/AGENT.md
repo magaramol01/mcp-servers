@@ -13,8 +13,10 @@
 | **Runtime** | Node.js 20 LTS |
 | **Language** | TypeScript 5 (strict mode) |
 | **MCP SDK** | `@modelcontextprotocol/sdk` |
-| **Monorepo** | pnpm Workspaces + Turborepo |
+| **Transport** | Streamable HTTP (`StreamableHTTPServerTransport`) |
+| **HTTP Server** | Express |
 | **Validation** | Zod |
+| **Monorepo** | pnpm Workspaces + Turborepo |
 | **Versioning** | Changesets |
 | **Infra** | Docker (multi-stage builds) |
 | **CI/CD** | GitHub Actions |

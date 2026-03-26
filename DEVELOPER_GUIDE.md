@@ -199,69 +199,63 @@ MONGO_URI=mongodb://localhost:27017 node packages/mcp-vessel-tracker/dist/index.
 
 ## 6. Testing Your MCP Server
 
-MCP servers communicate over **stdio** (stdin/stdout JSON-RPC). Testing them
-requires either a proper MCP client or direct JSON-RPC calls.
+All servers use **Streamable HTTP** (`StreamableHTTPServerTransport`). The server
+runs as a regular HTTP service on a configured port. Clients connect via HTTP — not
+by launching the server as a subprocess.
 
-### Method 1 — MCP Inspector (recommended for development)
+### Method 1 — MCP Inspector (recommended)
 
-The official MCP Inspector is the fastest way to interactively test tools.
-
-```bash
-# Install globally (one-time)
-npm install -g @modelcontextprotocol/inspector
-
-# Run against a built server
-MONGO_URI=mongodb://localhost:27017 \
-  npx @modelcontextprotocol/inspector \
-  node packages/mcp-vessel-tracker/dist/index.js
-```
-
-Open `http://localhost:5173` in your browser. You'll see all registered tools,
-can call them with custom inputs, and inspect raw JSON-RPC responses.
-
-### Method 2 — Raw stdin JSON-RPC (quick sanity check)
-
-MCP uses JSON-RPC 2.0 over stdio. You can pipe requests directly:
+The official MCP Inspector connects to an HTTP endpoint and lets you list and
+call tools interactively.
 
 ```bash
-# Build the server first
-pnpm turbo run build --filter=@fleet-orion/mcp-vessel-tracker
+# 1. Build the server
+pnpm turbo run build --filter=@your-org/mcp-<name>
 
-# Send a tools/list request
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
-  MONGO_URI=mongodb://localhost:27017 \
-  node packages/mcp-vessel-tracker/dist/index.js
+# 2. Start the HTTP server
+PORT=3000 DATABASE_URI=<uri> node packages/mcp-<name>/dist/index.js
+
+# 3. In another terminal, connect the inspector
+npx @modelcontextprotocol/inspector http://localhost:3000/mcp
+# → opens http://localhost:5173
 ```
 
-Expected response shape:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "tools": [
-      { "name": "get_vessel_position", "description": "...", "inputSchema": { ... } },
-      { "name": "list_active_vessels", "description": "...", "inputSchema": { ... } }
-    ]
-  }
-}
-```
+From the Inspector UI you can:
+- Browse all registered tools and their input schemas
+- Call any tool with custom arguments
+- Inspect raw JSON-RPC request/response pairs
+- View SSE stream events in real time
 
-Call a specific tool:
+### Method 2 — curl (quick sanity check)
+
+Streamable HTTP is standard HTTP, so you can test with `curl`:
+
 ```bash
-echo '{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "list_active_vessels",
-    "arguments": {}
-  }
-}' | MONGO_URI=mongodb://localhost:27017 \
-     node packages/mcp-vessel-tracker/dist/index.js
+# Step 1: Initialize a session
+curl -s -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0.0.1"}}}'
+# extract Mcp-Session-Id from the response headers or body
+
+# Step 2: List available tools
+curl -s -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: <session-id-from-step-1>" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+
+# Step 3: Call a specific tool
+curl -s -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: <session-id-from-step-1>" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"your_tool_name","arguments":{"key":"value"}}}'
 ```
 
-### Method 3 — Register in Claude Desktop (end-to-end testing)
+### Method 3 — Register in Claude Desktop (end-to-end)
+
+HTTP-based MCP servers use the `url` key (not `command`) in Claude Desktop config:
 
 Edit `~/.config/claude/claude_desktop_config.json` (Linux) or
 `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
@@ -269,85 +263,37 @@ Edit `~/.config/claude/claude_desktop_config.json` (Linux) or
 ```json
 {
   "mcpServers": {
-    "vessel-tracker": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/mcp-servers/packages/mcp-vessel-tracker/dist/index.js"
-      ],
-      "env": {
-        "MONGO_URI": "mongodb://localhost:27017",
-        "DB_NAME": "fo-shore",
-        "LOG_LEVEL": "debug"
-      }
+    "<server-alias>": {
+      "url": "http://localhost:3000/mcp"
     },
-    "port-analytics": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/mcp-servers/packages/mcp-port-analytics/dist/index.js"
-      ],
-      "env": {
-        "MONGO_URI": "mongodb://localhost:27017",
-        "DB_NAME": "fo-shore"
-      }
-    },
-    "alerts-service": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/mcp-servers/packages/mcp-alerts-service/dist/index.js"
-      ],
-      "env": {
-        "MONGO_URI": "mongodb://localhost:27017",
-        "DB_NAME": "fo-shore"
-      }
+    "<another-server>": {
+      "url": "http://localhost:3001/mcp"
     }
   }
 }
 ```
 
-Restart Claude Desktop. Your tools will appear automatically in the chat
-interface under the 🔌 icon.
+Each server must be **already running** before starting Claude Desktop.
+The server registers under the 🔌 icon in the chat interface.
 
-### Method 4 — TypeScript unit tests (jest / vitest)
+### Method 4 — Vitest unit tests (business logic only)
 
-For pure business logic (helpers, transformations), write unit tests in the
-same package:
+For pure business logic (helpers, transformations), extract tool handlers
+to separate files and unit-test them:
 
 ```
-packages/mcp-vessel-tracker/
+packages/<server-name>/
 └── src/
-    ├── index.ts
+    ├── index.ts           ← Express server + tool registrations
     ├── tools/
-    │   └── getVesselPosition.ts    ← extract tool logic here
+    │   └── getUser.ts     ← extract handler logic here
     └── tools/__tests__/
-        └── getVesselPosition.test.ts
+        └── getUser.test.ts
 ```
-
-Add vitest to the package:
 
 ```bash
-pnpm add -D vitest --filter=@fleet-orion/mcp-vessel-tracker
-```
-
-Add a `test` script to that package's `package.json`:
-
-```json
-"scripts": {
-  "test": "vitest run"
-}
-```
-
-Add `"test"` to `turbo.json` tasks:
-
-```json
-"test": {
-  "dependsOn": ["^build"],
-  "outputs": []
-}
-```
-
-Run tests across all packages:
-
-```bash
+pnpm add -D vitest --filter=@your-org/mcp-<name>
+# add "test": "vitest run" to the package's scripts
 pnpm turbo run test
 ```
 

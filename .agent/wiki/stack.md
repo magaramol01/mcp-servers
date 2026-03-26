@@ -22,9 +22,25 @@
 ## MCP SDK: `@modelcontextprotocol/sdk`
 
 - **Why:** Official SDK for building MCP servers. Handles JSON-RPC 2.0 framing,
-  capability negotiation, tool registration, and stdio transport automatically.
-- **Transport used:** `StdioServerTransport` — servers communicate over stdin/stdout,
-  which is the standard for locally-run MCP servers.
+  capability negotiation, and tool registration.
+- **Transport used:** `StreamableHTTPServerTransport` — the recommended transport
+  introduced in **MCP spec 2025-03-26**, replacing the older stdio and HTTP+SSE transports.
+- **Why not stdio?** stdio requires the AI client to launch the server as a subprocess.
+  Streamable HTTP allows the server to run independently and serve multiple clients
+  concurrently, which is better for production deployments.
+- **Why not legacy SSE?** The HTTP+SSE transport (two endpoints: `GET /sse` + `POST /messages`)
+  is deprecated as of 2025-03-26. Streamable HTTP replaces it with a single `/mcp` endpoint.
+
+---
+
+## HTTP Server: Express
+
+- **Why:** `StreamableHTTPServerTransport` integrates with Node.js `IncomingMessage`
+  and `ServerResponse` — Express provides the most straightforward way to mount the
+  `/mcp` `POST`, `GET`, and `DELETE` handlers with middleware support.
+- **Port:** Configured via `PORT` env var (default `3000`)
+- **Origin validation middleware** is applied globally to prevent DNS rebinding attacks
+  as required by the MCP spec.
 
 ---
 

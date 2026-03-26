@@ -8,11 +8,14 @@
 ## Model Context Protocol (MCP)
 
 - **SDK:** `@modelcontextprotocol/sdk`
-- **Transport:** `StdioServerTransport` — JSON-RPC 2.0 over stdin/stdout
+- **Transport:** `StreamableHTTPServerTransport` — MCP spec 2025-03-26
 - **Spec:** [modelcontextprotocol.io](https://modelcontextprotocol.io)
-- **Tool discovery:** Client calls `tools/list` → receives all registered tool definitions
-- **Tool invocation:** Client calls `tools/call` with `{ name, arguments }`
-- **Error handling:** The SDK automatically wraps thrown JS errors into JSON-RPC error objects
+- **Endpoint:** Single `/mcp` endpoint handles all communication:
+  - `POST /mcp` — client sends JSON-RPC; server replies via JSON or SSE stream
+  - `GET /mcp` — client opens persistent SSE stream for server notifications
+  - `DELETE /mcp` — client terminates the session
+- **Session tracking:** `Mcp-Session-Id` header (UUID, assigned on init)
+- **Resumability:** `Last-Event-ID` header allows clients to reconnect and replay missed events
 
 ### Registering in Claude Desktop
 
@@ -20,12 +23,7 @@
 {
   "mcpServers": {
     "<server-alias>": {
-      "command": "node",
-      "args": ["/absolute/path/to/packages/<server-name>/dist/index.js"],
-      "env": {
-        "DATABASE_URI": "...",
-        "LOG_LEVEL": "debug"
-      }
+      "url": "http://localhost:3000/mcp"
     }
   }
 }
@@ -35,11 +33,34 @@ Config file location:
 - **Linux:** `~/.config/claude/claude_desktop_config.json`
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 
+> Note: Claude Desktop uses the `url` key (not `command`) for HTTP-based MCP servers.
+
 ### Testing with MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector node packages/<server-name>/dist/index.js
-# Opens http://localhost:5173 — interactive tool explorer
+# Start the server
+PORT=3000 node packages/<server-name>/dist/index.js
+
+# Connect Inspector over HTTP
+npx @modelcontextprotocol/inspector http://localhost:3000/mcp
+# Opens http://localhost:5173
+```
+
+### Testing with curl
+
+```bash
+# Initialize session
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0.0.1"}}}'
+
+# List tools (add Mcp-Session-Id from the response above)
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: <id>" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 ```
 
 ---
