@@ -1,7 +1,7 @@
 # Fleet Orion — MCP Servers Developer Guide
 
 > A complete reference for setting up, testing, and contributing to the
-> `@fleet-orion/mcp-servers` monorepo.
+> `@mcpkit/mcp-servers` monorepo.
 
 ---
 
@@ -61,7 +61,7 @@ cd mcp-servers
 pnpm install
 
 # 3. Build the shared utils first (other packages depend on it)
-pnpm turbo run build --filter=@fleet-orion/utils
+pnpm turbo run build --filter=@mcpkit/utils
 
 # 4. Build everything
 pnpm build
@@ -153,7 +153,7 @@ LOG_LEVEL=debug
 ### Using `requireEnv` in code
 
 ```typescript
-import { requireEnv, optionalEnv } from "@fleet-orion/utils";
+import { requireEnv, optionalEnv } from "@mcpkit/utils";
 
 // Throws immediately at startup if missing — fail fast
 const uri = requireEnv("MONGO_URI");
@@ -171,7 +171,7 @@ This guarantees configuration errors surface at startup, not mid-request.
 ### Run a single server in watch mode
 
 ```bash
-pnpm turbo run dev --filter=@fleet-orion/mcp-vessel-tracker
+pnpm turbo run dev --filter=@mcpkit/mcp-vessel-tracker
 ```
 
 This starts `tsc --watch` and restarts `node` on file changes via
@@ -189,7 +189,7 @@ Turborepo will run the `dev` task across all packages in parallel.
 
 ```bash
 # Build first
-pnpm turbo run build --filter=@fleet-orion/mcp-vessel-tracker
+pnpm turbo run build --filter=@mcpkit/mcp-vessel-tracker
 
 # Run the compiled output
 MONGO_URI=mongodb://localhost:27017 node packages/mcp-vessel-tracker/dist/index.js
@@ -400,20 +400,20 @@ pnpm turbo run test
 cp -r packages/mcp-vessel-tracker packages/mcp-new-service
 
 # 2. Update the name in packages/mcp-new-service/package.json
-#    Change: "@fleet-orion/mcp-vessel-tracker" → "@fleet-orion/mcp-new-service"
+#    Change: "@mcpkit/mcp-vessel-tracker" → "@mcpkit/mcp-new-service"
 
 # 3. Re-install to register the new workspace package
 pnpm install
 
 # 4. Replace src/index.ts with your tools
 # 5. Build and verify
-pnpm turbo run build --filter=@fleet-orion/mcp-new-service
+pnpm turbo run build --filter=@mcpkit/mcp-new-service
 ```
 
 ### Checklist for a new server
 
-- [ ] `package.json` name set to `@fleet-orion/mcp-<name>`
-- [ ] `tsconfig.json` extends `@fleet-orion/tsconfig/base.json`
+- [ ] `package.json` name set to `@mcpkit/mcp-<name>`
+- [ ] `tsconfig.json` extends `@mcpkit/tsconfig/base.json`
 - [ ] `src/index.ts` registers server with `McpServer` from `@modelcontextprotocol/sdk`
 - [ ] All tools validated with `zod` schemas
 - [ ] `MONGO_URI` read via `requireEnv` (not hardcoded)
@@ -426,7 +426,7 @@ pnpm turbo run build --filter=@fleet-orion/mcp-new-service
 
 ## 8. Working with Shared Utils
 
-The `@fleet-orion/utils` package is the **single source of truth** for:
+The `@mcpkit/utils` package is the **single source of truth** for:
 
 | Export | Purpose |
 |--------|---------|
@@ -447,8 +447,8 @@ The `@fleet-orion/utils` package is the **single source of truth** for:
 
 1. Create `shared/utils/src/your-helper.ts`
 2. Export it from `shared/utils/src/index.ts`
-3. Rebuild utils: `pnpm turbo run build --filter=@fleet-orion/utils`
-4. Import in any MCP server via `@fleet-orion/utils`
+3. Rebuild utils: `pnpm turbo run build --filter=@mcpkit/utils`
+4. Import in any MCP server via `@mcpkit/utils`
 
 > **Rule:** Shared utils must have **zero side effects** on import.
 > They should be pure functions or lazy-initialized (like the MongoDB singleton).
@@ -473,10 +473,10 @@ Turborepo automatically parallelises independent tasks and caches outputs.
 
 ```bash
 # Build only one package
-pnpm turbo run build --filter=@fleet-orion/mcp-vessel-tracker
+pnpm turbo run build --filter=@mcpkit/mcp-vessel-tracker
 
 # Build a package AND its dependencies
-pnpm turbo run build --filter=@fleet-orion/mcp-vessel-tracker...
+pnpm turbo run build --filter=@mcpkit/mcp-vessel-tracker...
 
 # Build only packages changed since last commit (great for CI)
 pnpm turbo run build --filter=[HEAD^1]
@@ -520,7 +520,7 @@ Each MCP server has its own `Dockerfile` with a **3-stage build**:
 # From the REPO ROOT (context must be root for monorepo COPY paths to work)
 docker build \
   -f packages/mcp-vessel-tracker/Dockerfile \
-  -t fleet-orion/mcp-vessel-tracker:dev \
+  -t mcpkit/mcp-vessel-tracker:dev \
   .
 ```
 
@@ -531,7 +531,7 @@ docker run --rm \
   -e MONGO_URI="mongodb://host.docker.internal:27017" \
   -e DB_NAME="fo-shore" \
   -e LOG_LEVEL="debug" \
-  fleet-orion/mcp-vessel-tracker:dev
+  mcpkit/mcp-vessel-tracker:dev
 ```
 
 > Use `host.docker.internal` (Docker Desktop) or `172.17.0.1` (Linux) to
@@ -690,11 +690,11 @@ using path-based conditions:
 
 ## 14. Troubleshooting
 
-### `Cannot find module '@fleet-orion/utils'`
+### `Cannot find module '@mcpkit/utils'`
 
 The shared package hasn't been built yet. Run:
 ```bash
-pnpm turbo run build --filter=@fleet-orion/utils
+pnpm turbo run build --filter=@mcpkit/utils
 ```
 
 ### `process is not defined` / `console is not defined` in shared utils

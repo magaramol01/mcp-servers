@@ -9,14 +9,14 @@ import {
   disconnectMongo,
   NotFoundError,
   toError,
-} from "@fleet-orion/utils";
+} from "@mcpkit/utils";
 
 const log = createLogger("mcp-vessel-tracker");
 
 // ─── Server Setup ─────────────────────────────────────────────────────────────
 
 const server = new McpServer({
-  name: "fleet-orion/mcp-vessel-tracker",
+  name: "mcpkit/mcp-vessel-tracker",
   version: "1.0.0",
 });
 

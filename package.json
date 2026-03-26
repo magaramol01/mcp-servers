@@ -1,5 +1,5 @@
 {
-  "name": "@fleet-orion/mcp-servers",
+  "name": "@mcpkit/mcp-servers",
   "private": true,
   "scripts": {
     "build": "turbo run build",

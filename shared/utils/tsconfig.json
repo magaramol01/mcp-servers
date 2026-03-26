@@ -1,5 +1,5 @@
 {
-  "extends": "@fleet-orion/tsconfig/base.json",
+  "extends": "@mcpkit/tsconfig/base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",

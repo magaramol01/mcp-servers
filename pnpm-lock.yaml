@@ -23,7 +23,7 @@ importers:
 
   packages/mcp-alerts-service:
     dependencies:
-      '@fleet-orion/utils':
+      '@mcpkit/utils':
         specifier: workspace:*
         version: link:../../shared/utils
       '@modelcontextprotocol/sdk':
@@ -36,7 +36,7 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
-      '@fleet-orion/tsconfig':
+      '@mcpkit/tsconfig':
         specifier: workspace:*
         version: link:../../shared/tsconfig
       '@types/node':
@@ -51,7 +51,7 @@ importers:
 
   packages/mcp-port-analytics:
     dependencies:
-      '@fleet-orion/utils':
+      '@mcpkit/utils':
         specifier: workspace:*
         version: link:../../shared/utils
       '@modelcontextprotocol/sdk':
@@ -64,7 +64,7 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
-      '@fleet-orion/tsconfig':
+      '@mcpkit/tsconfig':
         specifier: workspace:*
         version: link:../../shared/tsconfig
       '@types/node':
@@ -79,7 +79,7 @@ importers:
 
   packages/mcp-vessel-tracker:
     dependencies:
-      '@fleet-orion/utils':
+      '@mcpkit/utils':
         specifier: workspace:*
         version: link:../../shared/utils
       '@modelcontextprotocol/sdk':
@@ -92,7 +92,7 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
-      '@fleet-orion/tsconfig':
+      '@mcpkit/tsconfig':
         specifier: workspace:*
         version: link:../../shared/tsconfig
       '@types/node':
@@ -113,7 +113,7 @@ importers:
         specifier: ^6.10.0
         version: 6.21.0
     devDependencies:
-      '@fleet-orion/tsconfig':
+      '@mcpkit/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':

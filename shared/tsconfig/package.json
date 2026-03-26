@@ -1,7 +1,7 @@
 {
-  "name": "@fleet-orion/tsconfig",
+  "name": "@mcpkit/tsconfig",
   "version": "0.0.1",
   "private": true,
-  "description": "Shared TypeScript configuration for all Fleet Orion MCP servers",
+  "description": "Shared TypeScript configuration for all @mcpkit MCP servers",
   "files": ["base.json"]
 }

@@ -8,12 +8,12 @@ import {
   connectMongo,
   disconnectMongo,
   toError,
-} from "@fleet-orion/utils";
+} from "@mcpkit/utils";
 
 const log = createLogger("mcp-port-analytics");
 
 const server = new McpServer({
-  name: "fleet-orion/mcp-port-analytics",
+  name: "mcpkit/mcp-port-analytics",
   version: "1.0.0",
 });
 

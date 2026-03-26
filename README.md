@@ -1,6 +1,6 @@
 # Fleet Orion — MCP Servers Monorepo
 
-> pnpm Workspaces + Turborepo monorepo hosting all Fleet Orion MCP servers.
+> pnpm Workspaces + Turborepo monorepo hosting all @mcpkit MCP servers.
 
 ## Repository Structure
 
@@ -32,10 +32,10 @@ pnpm install
 pnpm build
 
 # 3. Build only one server
-pnpm turbo run build --filter=@fleet-orion/mcp-vessel-tracker
+pnpm turbo run build --filter=@mcpkit/mcp-vessel-tracker
 
 # 4. Dev mode (watch) for one server
-pnpm turbo run dev --filter=@fleet-orion/mcp-vessel-tracker
+pnpm turbo run dev --filter=@mcpkit/mcp-vessel-tracker
 ```
 
 ## Environment Variables
@@ -63,7 +63,7 @@ cp -r packages/mcp-vessel-tracker packages/mcp-new-server
 pnpm install
 
 # 4. Build
-pnpm turbo run build --filter=@fleet-orion/mcp-new-server
+pnpm turbo run build --filter=@mcpkit/mcp-new-server
 ```
 
 ## Versioning & Releases
