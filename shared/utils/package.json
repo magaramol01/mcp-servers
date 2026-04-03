@@ -19,11 +19,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "mongodb": "^6.10.0"
+    "mongodb": "^6.10.0",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@mcpkit/tsconfig": "workspace:*",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.20.0",
     "typescript": "^5.6.3"
   }
 }
