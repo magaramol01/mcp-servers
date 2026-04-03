@@ -12,6 +12,7 @@ import {
   requireEnv,
   toError,
 } from "@mcpkit/utils";
+import { registerGetVesselAisTool } from "./tools/getVesselAis.js";
 
 const log = createLogger("mcp-emission-engineer");
 const packageEnvPath = resolve(__dirname, "../.env");
@@ -38,30 +39,7 @@ function createMcpServer() {
     version: "1.0.0",
   });
 
-  server.registerTool(
-    "demo_emission_status",
-    {
-      title: "Demo Emission Status",
-      description: "Return a static demo payload for testing in MCP Inspector",
-    },
-    async () => ({
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              service: "mcpkit/mcp-emission-engineer",
-              mode: "demo",
-              status: "ok",
-              message: "Static demo tool executed successfully",
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    }),
-  );
+  registerGetVesselAisTool(server);
 
   return server;
 }
