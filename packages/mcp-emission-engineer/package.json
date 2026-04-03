@@ -1,7 +1,7 @@
 {
-  "name": "@mcpkit/mcp-port-analytics",
+  "name": "@mcpkit/mcp-emission-engineer",
   "version": "1.0.0",
-  "description": "MCP server for port analytics and reporting",
+  "description": "MCP server for emission engineer workflows",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -13,9 +13,7 @@
   },
   "dependencies": {
     "@mcpkit/utils": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.10.1",
-    "mongodb": "^6.10.0",
-    "zod": "^3.23.8"
+    "@modelcontextprotocol/sdk": "^1.10.1"
   },
   "devDependencies": {
     "@mcpkit/tsconfig": "workspace:*",
