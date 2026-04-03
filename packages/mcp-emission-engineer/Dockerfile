@@ -18,6 +18,7 @@ RUN pnpm turbo run build --filter=@mcpkit/mcp-emission-engineer
 FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+EXPOSE 3000
 
 COPY --from=builder /app/shared/utils/dist ./shared/utils/dist
 COPY --from=builder /app/shared/utils/package.json ./shared/utils/
