@@ -68,10 +68,30 @@ function normalizeVesselId(vesselId?: string): number | undefined {
   return normalizedVesselId;
 }
 
+function getTenantPostgresUrl(basePostgresUrl: string, tenant: string): string {
+  const normalizedTenant = tenant.trim();
+
+  if (!normalizedTenant) {
+    throw new ValidationError("tenant is required");
+  }
+
+  if (
+    normalizedTenant.includes("/") ||
+    normalizedTenant.includes("?") ||
+    normalizedTenant.includes("#")
+  ) {
+    throw new ValidationError("tenant must be a valid database name");
+  }
+
+  const tenantPostgresUrl = new URL(basePostgresUrl);
+  tenantPostgresUrl.pathname = `/${normalizedTenant}`;
+  return tenantPostgresUrl.toString();
+}
+
 export function registerGetVesselAisTool(server: McpServer): void {
   server.tool(
     "get_vessel_ais",
-    "Return the latest AIS position for a vessel using either vesselId or IMO",
+    "Return the latest AIS position for a vessel using either vesselId or IMO and a tenant database name",
     {
       vesselId: z
         .string()
@@ -84,9 +104,14 @@ export function registerGetVesselAisTool(server: McpServer): void {
         .min(1)
         .optional()
         .describe("Vessel IMO number from shipping_db.ship.imo"),
+      tenant: z
+        .string()
+        .trim()
+        .min(1)
+        .describe("Tenant database name"),
     },
-    async ({ vesselId, imo }) => {
-      const postgresUrl = requireEnv("EMISSION_ENGINEER_POSTGRES_URL");
+    async ({ vesselId, imo, tenant }) => {
+      const basePostgresUrl = requireEnv("EMISSION_ENGINEER_POSTGRES_URL");
       let normalizedVesselId: number | undefined;
 
       try {
@@ -95,8 +120,9 @@ export function registerGetVesselAisTool(server: McpServer): void {
         }
 
         normalizedVesselId = normalizeVesselId(vesselId);
+        const tenantPostgresUrl = getTenantPostgresUrl(basePostgresUrl, tenant);
 
-        const pool = await connectPostgres(postgresUrl);
+        const pool = await connectPostgres(tenantPostgresUrl);
         const { rows } = await pool.query(GET_VESSEL_AIS_QUERY, [
           normalizedVesselId ?? null,
           imo ?? null,
@@ -137,6 +163,7 @@ export function registerGetVesselAisTool(server: McpServer): void {
         log.error("get_vessel_ais failed", {
           vesselId: normalizedVesselId,
           imo,
+          tenant,
           error: error.message,
         });
         throw error;
