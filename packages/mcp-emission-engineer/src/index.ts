@@ -13,7 +13,10 @@ import {
   toError,
 } from "@mcpkit/utils";
 import { registerCalculateCiiRatingTool } from "./tools/calculateCiiRating.js";
+import { registerFleetCiiSummaryTool } from "./tools/fleetCiiSummary.js";
 import { registerGetVesselAisTool } from "./tools/getVesselAis.js";
+import { registerTraceCiiCalculationInputsTool } from "./tools/traceCiiCalculationInputs.js";
+import { registerValidateNoonReportSeriesTool } from "./tools/validateNoonReportSeries.js";
 
 const log = createLogger("mcp-emission-engineer");
 const packageEnvPath = resolve(__dirname, "../.env");
@@ -41,7 +44,10 @@ function createMcpServer() {
   });
 
   registerCalculateCiiRatingTool(server);
+  registerFleetCiiSummaryTool(server);
   registerGetVesselAisTool(server);
+  registerTraceCiiCalculationInputsTool(server);
+  registerValidateNoonReportSeriesTool(server);
 
   return server;
 }
