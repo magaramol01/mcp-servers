@@ -16,8 +16,13 @@ import { registerAggregateEmissionsByVoyageTool } from "./tools/aggregateEmissio
 import { registerCalculateCiiRatingTool } from "./tools/calculateCiiRating.js";
 import { registerCalculateEmissionsFromFuelTool } from "./tools/calculateEmissionsFromFuel.js";
 import { registerClassifyEmissionsByScopeTool } from "./tools/classifyEmissionsByScope.js";
+import { registerEstimateEuEtsObligationTool } from "./tools/estimateEuEtsObligation.js";
+import { registerExportMrvAuditBundleTool } from "./tools/exportMrvAuditBundle.js";
 import { registerFleetCiiSummaryTool } from "./tools/fleetCiiSummary.js";
+import { registerFuelyeuIndicativeComplianceTool } from "./tools/fuelyeuIndicativeCompliance.js";
+import { registerGetEtsDelegationChecklistTool } from "./tools/getEtsDelegationChecklist.js";
 import { registerGetVesselAisTool } from "./tools/getVesselAis.js";
+import { registerReconcileEuaPurchasesTool } from "./tools/reconcileEuaPurchases.js";
 import { registerTraceCiiCalculationInputsTool } from "./tools/traceCiiCalculationInputs.js";
 import { registerValidateNoonReportSeriesTool } from "./tools/validateNoonReportSeries.js";
 
@@ -50,8 +55,13 @@ function createMcpServer() {
   registerCalculateCiiRatingTool(server);
   registerCalculateEmissionsFromFuelTool(server);
   registerClassifyEmissionsByScopeTool(server);
+  registerEstimateEuEtsObligationTool(server);
+  registerExportMrvAuditBundleTool(server);
   registerFleetCiiSummaryTool(server);
+  registerFuelyeuIndicativeComplianceTool(server);
+  registerGetEtsDelegationChecklistTool(server);
   registerGetVesselAisTool(server);
+  registerReconcileEuaPurchasesTool(server);
   registerTraceCiiCalculationInputsTool(server);
   registerValidateNoonReportSeriesTool(server);
 
