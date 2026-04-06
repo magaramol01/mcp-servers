@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { connectPostgres, createLogger, requireEnv, toError } from "@mcpkit/utils";
+import { connectPostgres, createLogger, requireEnv } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import { computeCiiForPeriod } from "../cii/engine.js";
 import {
   getTenantPostgresUrl,
@@ -40,8 +41,7 @@ export function registerCalculateCiiRatingTool(server: McpServer): void {
         .string()
         .trim()
         .min(1)
-        .optional()
-        .describe("Tenant database name"),
+        .describe("Tenant database name (PostgreSQL database name)"),
     },
     async ({ startDate, endDate, vesselId, imo, tenant }) => {
       const basePostgresUrl = requireEnv("EMISSION_ENGINEER_POSTGRES_URL");
@@ -74,7 +74,7 @@ export function registerCalculateCiiRatingTool(server: McpServer): void {
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("calculate_cii_rating failed", {
           vesselId: normalizedVesselId,
           imo,

@@ -5,9 +5,9 @@ import {
   createLogger,
   NotFoundError,
   requireEnv,
-  toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import { getTenantPostgresUrl, normalizeVesselId } from "./shared.js";
 
 const log = createLogger("mcp-emission-engineer:get-vessel-ais");
@@ -126,7 +126,7 @@ export function registerGetVesselAisTool(server: McpServer): void {
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("get_vessel_ais failed", {
           vesselId: normalizedVesselId,
           imo,

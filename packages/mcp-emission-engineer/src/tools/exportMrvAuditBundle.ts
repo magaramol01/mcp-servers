@@ -5,9 +5,9 @@ import {
   createLogger,
   NotFoundError,
   requireEnv,
-  toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import { buildMrvAuditBundle } from "../mrv/buildAuditBundle.js";
 import { GET_VESSEL_CII_CONTEXT_QUERY } from "../cii/engine.js";
 import {
@@ -24,11 +24,32 @@ export function registerExportMrvAuditBundleTool(server: McpServer): void {
     "export_mrv_audit_bundle",
     "Build one JSON package: CII result, deduped vs raw noon counts, duplicate key count, period fuel/emissions totals, and BOSP/EOSP voyage counts — for internal or verifier review (not a THETIS upload). startDate/endDate must fall in one calendar year (CII engine constraint).",
     {
-      startDate: z.string().trim().min(1),
-      endDate: z.string().trim().min(1),
-      vesselId: z.string().trim().optional(),
-      imo: z.string().trim().min(1).optional(),
-      tenant: z.string().trim().min(1),
+      startDate: z
+        .string()
+        .trim()
+        .min(1)
+        .describe("Start date YYYY-MM-DD"),
+      endDate: z
+        .string()
+        .trim()
+        .min(1)
+        .describe("End date YYYY-MM-DD (same calendar year as startDate)"),
+      vesselId: z
+        .string()
+        .trim()
+        .optional()
+        .describe("Internal vessel id from shipping_db.ship.id"),
+      imo: z
+        .string()
+        .trim()
+        .min(1)
+        .optional()
+        .describe("Vessel IMO number from shipping_db.ship.imo"),
+      tenant: z
+        .string()
+        .trim()
+        .min(1)
+        .describe("Tenant database name (PostgreSQL database name)"),
     },
     async ({ startDate, endDate, vesselId, imo, tenant }) => {
       const basePostgresUrl = requireEnv("EMISSION_ENGINEER_POSTGRES_URL");
@@ -79,7 +100,7 @@ export function registerExportMrvAuditBundleTool(server: McpServer): void {
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("export_mrv_audit_bundle failed", { error: error.message });
         throw error;
       }

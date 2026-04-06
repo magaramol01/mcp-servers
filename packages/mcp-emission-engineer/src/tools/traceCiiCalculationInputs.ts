@@ -5,9 +5,9 @@ import {
   createLogger,
   NotFoundError,
   requireEnv,
-  toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import {
   fuelTotalsForReport,
   reportDistanceNm,
@@ -37,8 +37,14 @@ export function registerTraceCiiCalculationInputsTool(server: McpServer): void {
       vesselId: z.string().trim().optional().describe("shipping_db.ship.id"),
       imo: z.string().trim().min(1).optional(),
       tenant: z.string().trim().min(1).describe("Tenant database name"),
+      includeReports: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, omit the per-report `reports` array (keep counts and fuel_row_total_mt) to reduce payload size. Default true.",
+        ),
     },
-    async ({ startDate, endDate, vesselId, imo, tenant }) => {
+    async ({ startDate, endDate, vesselId, imo, tenant, includeReports }) => {
       const basePostgresUrl = requireEnv("EMISSION_ENGINEER_POSTGRES_URL");
 
       try {
@@ -92,6 +98,8 @@ export function registerTraceCiiCalculationInputsTool(server: McpServer): void {
           me_running_hrs: reportMeRunningHrs(row.noonreportdata),
         }));
 
+        const withReports = includeReports !== false;
+
         return {
           content: [
             {
@@ -121,7 +129,8 @@ export function registerTraceCiiCalculationInputsTool(server: McpServer): void {
                     {} as Record<string, number>,
                   ),
                   report_count: reports.length,
-                  reports,
+                  reports_omitted: !withReports,
+                  ...(withReports ? { reports } : {}),
                 },
                 null,
                 2,
@@ -130,7 +139,7 @@ export function registerTraceCiiCalculationInputsTool(server: McpServer): void {
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("trace_cii_calculation_inputs failed", {
           vesselId,
           imo,

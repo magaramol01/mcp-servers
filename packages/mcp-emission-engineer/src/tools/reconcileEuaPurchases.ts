@@ -5,9 +5,9 @@ import {
   createLogger,
   NotFoundError,
   requireEnv,
-  toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import {
   getEuEtsMaritimeCoveragePercent,
   METHODOLOGY_ID_EU_ETS,
@@ -27,7 +27,7 @@ const EUA_LEDGER_TABLE = "shipping_db.eua_allowance_ledger";
 export function registerReconcileEuaPurchasesTool(server: McpServer): void {
   server.tool(
     "reconcile_eua_purchases",
-    "Compare indicative EU ETS allowance demand (phase-in × EU-scope CO₂) to allowances recorded (manual input and/or optional shipping_db.eua_allowance ledger sum).",
+    "Compare indicative EU ETS allowance demand (phase-in × EU-scope CO₂) to allowances recorded (manual input and/or optional shipping_db.eua_allowance ledger sum). Provide tenant when include_ledger_if_available is true with vesselId or imo.",
     {
       compliance_year: z.number().int().min(2024).max(2100),
       eu_related_co2_tonnes: z.number().nonnegative().optional(),
@@ -46,7 +46,12 @@ export function registerReconcileEuaPurchasesTool(server: McpServer): void {
         ),
       vesselId: z.string().trim().optional(),
       imo: z.string().trim().min(1).optional(),
-      tenant: z.string().trim().min(1).optional(),
+      tenant: z
+        .string()
+        .trim()
+        .min(1)
+        .optional()
+        .describe("Tenant database name — required with vesselId or imo when include_ledger_if_available is true"),
     },
     async ({
       compliance_year,
@@ -155,7 +160,7 @@ export function registerReconcileEuaPurchasesTool(server: McpServer): void {
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("reconcile_eua_purchases failed", { error: error.message });
         throw error;
       }

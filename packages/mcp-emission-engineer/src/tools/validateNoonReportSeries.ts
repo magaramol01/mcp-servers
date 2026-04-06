@@ -5,9 +5,9 @@ import {
   createLogger,
   NotFoundError,
   requireEnv,
-  toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import { GET_VESSEL_CII_CONTEXT_QUERY } from "../cii/engine.js";
 import { LIST_REPORTS_FOR_VALIDATION } from "../mrv/reportQueries.js";
 import {
@@ -181,7 +181,7 @@ export function registerValidateNoonReportSeriesTool(server: McpServer): void {
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("validate_noon_report_series failed", {
           vesselId,
           imo,

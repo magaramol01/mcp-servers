@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createLogger, toError } from "@mcpkit/utils";
-import { emissionsFromFuelMasses } from "../accounting/ipccFactors.js";
+import { emissionsFromFuelMasses, KNOWN_FUEL_CANONICAL_KEYS } from "../accounting/ipccFactors.js";
 
 const log = createLogger("mcp-emission-engineer:calculate-emissions-from-fuel");
 
@@ -18,7 +18,7 @@ export function registerCalculateEmissionsFromFuelTool(server: McpServer): void 
               .trim()
               .min(1)
               .describe(
-                "Fuel key (e.g. hfo, vlsfo, mgo, lng) — must match accounting/ipccFactors KnownFuelType aliases",
+                `Fuel key — canonical types: ${KNOWN_FUEL_CANONICAL_KEYS.join(", ")}. Common aliases are accepted (e.g. hsfo→hfo, mdo→mgo, uls→ulsgo, lpg→lpg_propane).`,
               ),
             mass_mt: z
               .number()

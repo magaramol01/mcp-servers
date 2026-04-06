@@ -8,6 +8,7 @@ import {
   toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import { emissionsFromMassByFuelType, METHODOLOGY_ID } from "../accounting/ipccFactors.js";
 import {
   fuelTotalsForReport,
@@ -35,11 +36,32 @@ export function registerAggregateEmissionsByVoyageTool(server: McpServer): void 
     "aggregate_emissions_by_voyage",
     "Sum fuel from deduplicated noon reports per voyage (BOSP→EOSP) or as a single period, then apply the same CO₂/CO₂e model as calculate_emissions_from_fuel.",
     {
-      startDate: z.string().trim().min(1),
-      endDate: z.string().trim().min(1),
-      vesselId: z.string().trim().optional(),
-      imo: z.string().trim().min(1).optional(),
-      tenant: z.string().trim().min(1),
+      startDate: z
+        .string()
+        .trim()
+        .min(1)
+        .describe("Start date YYYY-MM-DD"),
+      endDate: z
+        .string()
+        .trim()
+        .min(1)
+        .describe("End date YYYY-MM-DD"),
+      vesselId: z
+        .string()
+        .trim()
+        .optional()
+        .describe("Internal vessel id from shipping_db.ship.id"),
+      imo: z
+        .string()
+        .trim()
+        .min(1)
+        .optional()
+        .describe("Vessel IMO number from shipping_db.ship.imo"),
+      tenant: z
+        .string()
+        .trim()
+        .min(1)
+        .describe("Tenant database name (PostgreSQL database name)"),
       voyage_mode: z
         .enum(["bosp_eosp", "period_single"])
         .optional()
@@ -168,7 +190,7 @@ export function registerAggregateEmissionsByVoyageTool(server: McpServer): void 
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("aggregate_emissions_by_voyage failed", { error: error.message });
         throw error;
       }

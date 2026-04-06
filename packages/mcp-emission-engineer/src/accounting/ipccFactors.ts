@@ -68,32 +68,40 @@ export const IMO_CO2_T_PER_T_FUEL: Record<KnownFuelType, number> = {
   lpg_propane: 3.0,
 };
 
+/** Canonical fuel keys accepted after alias resolution (sorted for stable docs). */
+export const KNOWN_FUEL_CANONICAL_KEYS: readonly KnownFuelType[] = (
+  Object.keys(IMO_CO2_T_PER_T_FUEL) as KnownFuelType[]
+).sort((a, b) => a.localeCompare(b));
+
+/**
+ * Normalized lookup keys (lowercase, spaces → _) → canonical {@link KnownFuelType}.
+ * Used by {@link resolveFuelType} and agent-facing docs.
+ */
+export const FUEL_TYPE_ALIASES: Record<string, KnownFuelType> = {
+  hfo: "hfo",
+  hsfo: "hfo",
+  vlsfo: "vlsfo",
+  lsfo: "lsfo",
+  ulsgo: "ulsgo",
+  uls: "ulsgo",
+  vlsgo: "vlsgo",
+  mgo: "mgo",
+  mdo: "mgo",
+  lsmgo: "lsmgo",
+  lfo: "lfo",
+  lng: "lng",
+  methanol: "methanol",
+  lpg: "lpg_propane",
+  propane: "lpg_propane",
+};
+
 function normalizeFuelKey(raw: string): string {
   return raw.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
 export function resolveFuelType(raw: string): KnownFuelType {
   const key = normalizeFuelKey(raw);
-
-  const aliases: Record<string, KnownFuelType> = {
-    hfo: "hfo",
-    hsfo: "hfo",
-    vlsfo: "vlsfo",
-    lsfo: "lsfo",
-    ulsgo: "ulsgo",
-    uls: "ulsgo",
-    vlsgo: "vlsgo",
-    mgo: "mgo",
-    mdo: "mgo",
-    lsmgo: "lsmgo",
-    lfo: "lfo",
-    lng: "lng",
-    methanol: "methanol",
-    lpg: "lpg_propane",
-    propane: "lpg_propane",
-  };
-
-  const resolved = aliases[key];
+  const resolved = FUEL_TYPE_ALIASES[key];
 
   if (!resolved) {
     throw new ValidationError(`Unknown fuel type for emission factors: ${raw}`);

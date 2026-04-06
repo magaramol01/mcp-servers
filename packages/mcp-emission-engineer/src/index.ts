@@ -25,6 +25,7 @@ import { registerGetVesselAisTool } from "./tools/getVesselAis.js";
 import { registerReconcileEuaPurchasesTool } from "./tools/reconcileEuaPurchases.js";
 import { registerTraceCiiCalculationInputsTool } from "./tools/traceCiiCalculationInputs.js";
 import { registerValidateNoonReportSeriesTool } from "./tools/validateNoonReportSeries.js";
+import { MCP_SERVER_INSTRUCTIONS, registerAgentPlaybookSurface } from "./agent/playbook.js";
 
 const log = createLogger("mcp-emission-engineer");
 const packageEnvPath = resolve(__dirname, "../.env");
@@ -46,10 +47,15 @@ let httpServer: ReturnType<typeof createServer> | null = null;
 let isShuttingDown = false;
 
 function createMcpServer() {
-  const server = new McpServer({
-    name: "mcpkit/mcp-emission-engineer",
-    version: "1.0.0",
-  });
+  const server = new McpServer(
+    {
+      name: "mcpkit/mcp-emission-engineer",
+      version: "1.0.0",
+    },
+    { instructions: MCP_SERVER_INSTRUCTIONS },
+  );
+
+  registerAgentPlaybookSurface(server);
 
   registerAggregateEmissionsByVoyageTool(server);
   registerCalculateCiiRatingTool(server);

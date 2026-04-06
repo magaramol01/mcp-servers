@@ -7,6 +7,7 @@ import {
   toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { toAgentFriendlyDbError } from "../dbErrors.js";
 import {
   computeCiiForPeriod,
   LIST_FLEET_VESSELS_QUERY,
@@ -98,8 +99,14 @@ export function registerFleetCiiSummaryTool(server: McpServer): void {
         .max(500)
         .optional()
         .describe("Safety cap on vessels processed (default 200)"),
+      compact: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, each vessel entry omits detailed CII numerics (keeps rating, status, compliance_flag). Default false.",
+        ),
     },
-    async ({ startDate, endDate, tenant, vesselIds, maxVessels }) => {
+    async ({ startDate, endDate, tenant, vesselIds, maxVessels, compact }) => {
       const basePostgresUrl = requireEnv("EMISSION_ENGINEER_POSTGRES_URL");
       const normalizedTenant = resolveTenantName(tenant);
       const cap = maxVessels ?? 200;
@@ -149,20 +156,31 @@ export function registerFleetCiiSummaryTool(server: McpServer): void {
               continue;
             }
 
-            items.push({
-              vessel_id: row.id,
-              name: row.name ?? null,
-              imo: row.imo ?? null,
-              raw_category: row.category ?? null,
-              category: payload.vessel.category,
-              cii_rating: payload.cii.cii_rating,
-              calculation_status: payload.cii.calculation_status,
-              attained_over_required_ratio: payload.cii.attained_over_required_ratio,
-              cii_percentage: payload.cii.cii_percentage,
-              required_cii: payload.cii.required_cii,
-              attained_cii: payload.cii.attained_cii,
-              compliance_flag: complianceFlag(payload),
-            });
+            items.push(
+              compact
+                ? {
+                    vessel_id: row.id,
+                    name: row.name ?? null,
+                    imo: row.imo ?? null,
+                    cii_rating: payload.cii.cii_rating,
+                    calculation_status: payload.cii.calculation_status,
+                    compliance_flag: complianceFlag(payload),
+                  }
+                : {
+                    vessel_id: row.id,
+                    name: row.name ?? null,
+                    imo: row.imo ?? null,
+                    raw_category: row.category ?? null,
+                    category: payload.vessel.category,
+                    cii_rating: payload.cii.cii_rating,
+                    calculation_status: payload.cii.calculation_status,
+                    attained_over_required_ratio: payload.cii.attained_over_required_ratio,
+                    cii_percentage: payload.cii.cii_percentage,
+                    required_cii: payload.cii.required_cii,
+                    attained_cii: payload.cii.attained_cii,
+                    compliance_flag: complianceFlag(payload),
+                  },
+            );
           } catch (error) {
             const err = toError(error);
 
@@ -212,7 +230,7 @@ export function registerFleetCiiSummaryTool(server: McpServer): void {
           ],
         };
       } catch (err) {
-        const error = toError(err);
+        const error = toAgentFriendlyDbError(err);
         log.error("fleet_cii_summary failed", {
           tenant: normalizedTenant,
           startDate,
