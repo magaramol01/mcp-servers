@@ -415,69 +415,52 @@ function findNodeByKey(node: unknown, targetKey: string, depth = 0): unknown | n
   return null;
 }
 
+function getCiiFuelConfigFileCandidates(): string[] {
+  return [
+    resolvePath(__dirname, "../conf/conf.json"),
+    resolvePath(__dirname, "../../src/conf/conf.json"),
+    resolvePath(process.cwd(), "packages/mcp-emission-engineer/src/conf/conf.json"),
+  ];
+}
+
+function resolveCiiFuelConfigFilePath(): string | null {
+  return getCiiFuelConfigFileCandidates().find((candidatePath) => existsSync(candidatePath)) ?? null;
+}
+
+/**
+ * Loads tenant fuel tag mapping: use `conf.json` next to the built package / source when present,
+ * otherwise the built-in {@link DEFAULT_CII_FUEL_CONFIG_SOURCE}.
+ */
 function getConfiguredFuelConfigSource(): { source: string; value: unknown } {
-  const configPath = process.env.EMISSION_ENGINEER_CII_FUEL_CONFIG_PATH?.trim() ?? "";
-  const configJson = process.env.EMISSION_ENGINEER_CII_FUEL_CONFIG_JSON?.trim() ?? "";
-  const cacheKey = `${configPath}::${configJson}`;
+  const configPath = resolveCiiFuelConfigFilePath();
+  const cacheKey = configPath ?? "built-in-default";
 
   if (cachedFuelConfigSource?.cacheKey === cacheKey) {
     return cachedFuelConfigSource;
   }
 
-  let source = "built-in-default";
-  let value: unknown = DEFAULT_CII_FUEL_CONFIG_SOURCE;
-
-  if (configPath) {
-    const absolutePath = resolvePath(configPath);
-
-    if (!existsSync(absolutePath)) {
-      throw new ValidationError(
-        `CII fuel config file not found: ${absolutePath}`,
-      );
-    }
-
-    try {
-      value = JSON.parse(readFileSync(absolutePath, "utf8"));
-      source = `file:${absolutePath}`;
-    } catch (error) {
-      throw new ValidationError(
-        `Unable to parse CII fuel config file: ${toError(error).message}`,
-      );
-    }
-  } else if (configJson) {
-    try {
-      value = JSON.parse(configJson);
-      source = "env:EMISSION_ENGINEER_CII_FUEL_CONFIG_JSON";
-    } catch (error) {
-      throw new ValidationError(
-        `Unable to parse EMISSION_ENGINEER_CII_FUEL_CONFIG_JSON: ${toError(error).message}`,
-      );
-    }
-  } else {
-    const defaultConfigCandidates = [
-      resolvePath(__dirname, "../conf/conf.json"),
-      resolvePath(__dirname, "../../src/conf/conf.json"),
-      resolvePath(process.cwd(), "packages/mcp-emission-engineer/src/conf/conf.json"),
-    ];
-
-    const defaultConfigPath = defaultConfigCandidates.find((candidatePath) =>
-      existsSync(candidatePath),
-    );
-
-    if (defaultConfigPath) {
-      try {
-        value = JSON.parse(readFileSync(defaultConfigPath, "utf8"));
-        source = `file:${defaultConfigPath}`;
-      } catch (error) {
-        throw new ValidationError(
-          `Unable to parse default CII config file: ${toError(error).message}`,
-        );
-      }
-    }
+  if (!configPath) {
+    cachedFuelConfigSource = {
+      cacheKey,
+      source: "built-in-default",
+      value: DEFAULT_CII_FUEL_CONFIG_SOURCE,
+    };
+    return cachedFuelConfigSource;
   }
 
-  cachedFuelConfigSource = { cacheKey, source, value };
-  return cachedFuelConfigSource;
+  try {
+    const value = JSON.parse(readFileSync(configPath, "utf8"));
+    cachedFuelConfigSource = {
+      cacheKey,
+      source: `file:${configPath}`,
+      value,
+    };
+    return cachedFuelConfigSource;
+  } catch (error) {
+    throw new ValidationError(
+      `Unable to parse CII fuel config file: ${toError(error).message}`,
+    );
+  }
 }
 
 function parseFuelEntriesFromFuelData(value: unknown): CiiFuelConfigEntry[] {
