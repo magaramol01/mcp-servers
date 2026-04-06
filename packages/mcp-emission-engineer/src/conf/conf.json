@@ -1,0 +1,252 @@
+{
+  "tenants": {
+    "orion": {
+      "cii": {
+        "ciiData": {
+          "fuelData": [
+            {
+              "type": "hfo",
+              "coefficient": 3.114,
+              "tags": [
+                [
+                  "Total_HFOME_Consumed_In_MT",
+                  "Total_HFOAE_Consumed_In_MT",
+                  "Total_HFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_HFO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "vlsfo",
+              "coefficient": 3.15,
+              "tags": [
+                [
+                  "Total_VLSFOME_Consumed_In_MT",
+                  "Total_VLSFOAX_Consumed_In_MT",
+                  "Total_VLSFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_VLSFO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "lsfo",
+              "coefficient": 3.15,
+              "tags": [
+                [
+                  "Total_LSFOME_Consumed_In_MT",
+                  "Total_LSFOAE_Consumed_In_MT",
+                  "Total_LSFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_LSFO_Consumed _In _Mt"
+                ]
+              ]
+            },
+            {
+              "type": "ulsgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "Total_ULSGOME_Consumed_In_MT",
+                  "Total_ULSGOAE_Consumed_In_MT",
+                  "Total_ULSGOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_ULSGO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "vlsgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "Total_VLSGOME_Consumed_In_MT",
+                  "Total_VLSGOAX_Consumed_In_MT",
+                  "Total_VLSGOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_VLSGO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "mgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "MGOME_CONSUMED_IN_MT",
+                  "AE_MGO_CONSUMPTION",
+                  "BOILER_MGO_CONSUMPTION"
+                ],
+                [
+                  "Total_ULSMDO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "lsmgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "ME_MGOLS_CONSUMPTION",
+                  "AE_MGOLS_CONSUMPTION",
+                  "AE_MDOLS_CONSUMPTION",
+                  "BOILER_LSMGO_CONSUMPTION",
+                  "BOILER_MDOLS_CONSUMPTION"
+                ],
+                [
+                  "Total_MGOLSME_Consumed_In_MT",
+                  "Total_MGOLSAE_Consumed_In_MT",
+                  "Total_MGOLSBLR_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "lfo",
+              "coefficient": 3.151,
+              "tags": [
+                [
+                  "Total_LFOME_Consumed_In_MT",
+                  "Total_LFOAE_Consumed_In_MT",
+                  "Total_LFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_LFO_Consumed_In_MT"
+                ]
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "asiaticlloyd": {
+      "cii": {
+        "ciiData": {
+          "fuelData": [
+            {
+              "type": "hfo",
+              "coefficient": 3.114,
+              "tags": [
+                [
+                  "Total_HFOME_Consumed_In_MT",
+                  "Total_HFOAE_Consumed_In_MT",
+                  "Total_HFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_HFO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "vlsfo",
+              "coefficient": 3.15,
+              "tags": [
+                [
+                  "Total_VLSFOME_Consumed_In_MT",
+                  "Total_VLSFOAX_Consumed_In_MT",
+                  "Total_VLSFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_VLSFO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "lsfo",
+              "coefficient": 3.15,
+              "tags": [
+                [
+                  "Total_LSFOME_Consumed_In_MT",
+                  "Total_LSFOAE_Consumed_In_MT",
+                  "Total_LSFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_LSFO_Consumed _In _Mt"
+                ]
+              ]
+            },
+            {
+              "type": "ulsgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "Total_ULSGOME_Consumed_In_MT",
+                  "Total_ULSGOAE_Consumed_In_MT",
+                  "Total_ULSGOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_ULSGO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "vlsgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "Total_VLSGOME_Consumed_In_MT",
+                  "Total_VLSGOAX_Consumed_In_MT",
+                  "Total_VLSGOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_VLSGO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "mgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "MGOME_CONSUMED_IN_MT",
+                  "AE_MGO_CONSUMPTION",
+                  "BOILER_MGO_CONSUMPTION"
+                ],
+                [
+                  "Total_ULSMDO_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "lsmgo",
+              "coefficient": 3.206,
+              "tags": [
+                [
+                  "ME_MGOLS_CONSUMPTION",
+                  "AE_MGOLS_CONSUMPTION",
+                  "AE_MDOLS_CONSUMPTION",
+                  "BOILER_LSMGO_CONSUMPTION",
+                  "BOILER_MDOLS_CONSUMPTION"
+                ],
+                [
+                  "Total_MGOLSME_Consumed_In_MT",
+                  "Total_MGOLSAE_Consumed_In_MT",
+                  "Total_MGOLSBLR_Consumed_In_MT"
+                ]
+              ]
+            },
+            {
+              "type": "lfo",
+              "coefficient": 3.151,
+              "tags": [
+                [
+                  "Total_LFOME_Consumed_In_MT",
+                  "Total_LFOAE_Consumed_In_MT",
+                  "Total_LFOBLR_Consumed_In_MT"
+                ],
+                [
+                  "Total_LFO_Consumed_In_MT"
+                ]
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

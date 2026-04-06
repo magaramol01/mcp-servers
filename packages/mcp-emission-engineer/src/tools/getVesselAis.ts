@@ -8,6 +8,7 @@ import {
   toError,
   ValidationError,
 } from "@mcpkit/utils";
+import { getTenantPostgresUrl, normalizeVesselId } from "./shared.js";
 
 const log = createLogger("mcp-emission-engineer:get-vessel-ais");
 
@@ -53,40 +54,6 @@ const GET_VESSEL_AIS_QUERY = `
   ORDER BY s.id ASC
   LIMIT 1
 `;
-
-function normalizeVesselId(vesselId?: string): number | undefined {
-  if (vesselId === undefined || vesselId === "") {
-    return undefined;
-  }
-
-  const normalizedVesselId = Number.parseInt(vesselId, 10);
-
-  if (Number.isNaN(normalizedVesselId) || normalizedVesselId <= 0) {
-    throw new ValidationError("vesselId must be a positive integer");
-  }
-
-  return normalizedVesselId;
-}
-
-function getTenantPostgresUrl(basePostgresUrl: string, tenant: string): string {
-  const normalizedTenant = tenant.trim();
-
-  if (!normalizedTenant) {
-    throw new ValidationError("tenant is required");
-  }
-
-  if (
-    normalizedTenant.includes("/") ||
-    normalizedTenant.includes("?") ||
-    normalizedTenant.includes("#")
-  ) {
-    throw new ValidationError("tenant must be a valid database name");
-  }
-
-  const tenantPostgresUrl = new URL(basePostgresUrl);
-  tenantPostgresUrl.pathname = `/${normalizedTenant}`;
-  return tenantPostgresUrl.toString();
-}
 
 export function registerGetVesselAisTool(server: McpServer): void {
   server.tool(

@@ -29,3 +29,6 @@ Thumbs.db
 npm-debug.log*
 pnpm-debug.log*
 .agent/context/env.md
+
+# codex
+.codex

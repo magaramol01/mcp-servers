@@ -12,6 +12,7 @@ import {
   requireEnv,
   toError,
 } from "@mcpkit/utils";
+import { registerCalculateCiiRatingTool } from "./tools/calculateCiiRating.js";
 import { registerGetVesselAisTool } from "./tools/getVesselAis.js";
 
 const log = createLogger("mcp-emission-engineer");
@@ -39,6 +40,7 @@ function createMcpServer() {
     version: "1.0.0",
   });
 
+  registerCalculateCiiRatingTool(server);
   registerGetVesselAisTool(server);
 
   return server;
