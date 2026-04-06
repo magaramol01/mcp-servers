@@ -12,7 +12,10 @@ import {
   requireEnv,
   toError,
 } from "@mcpkit/utils";
+import { registerAggregateEmissionsByVoyageTool } from "./tools/aggregateEmissionsByVoyage.js";
 import { registerCalculateCiiRatingTool } from "./tools/calculateCiiRating.js";
+import { registerCalculateEmissionsFromFuelTool } from "./tools/calculateEmissionsFromFuel.js";
+import { registerClassifyEmissionsByScopeTool } from "./tools/classifyEmissionsByScope.js";
 import { registerFleetCiiSummaryTool } from "./tools/fleetCiiSummary.js";
 import { registerGetVesselAisTool } from "./tools/getVesselAis.js";
 import { registerTraceCiiCalculationInputsTool } from "./tools/traceCiiCalculationInputs.js";
@@ -43,7 +46,10 @@ function createMcpServer() {
     version: "1.0.0",
   });
 
+  registerAggregateEmissionsByVoyageTool(server);
   registerCalculateCiiRatingTool(server);
+  registerCalculateEmissionsFromFuelTool(server);
+  registerClassifyEmissionsByScopeTool(server);
   registerFleetCiiSummaryTool(server);
   registerGetVesselAisTool(server);
   registerTraceCiiCalculationInputsTool(server);

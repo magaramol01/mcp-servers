@@ -9,11 +9,14 @@ import {
   ValidationError,
 } from "@mcpkit/utils";
 import {
+  fuelTotalsForReport,
+  reportDistanceNm,
+  reportMeRunningHrs,
+} from "../accounting/fuelFromReports.js";
+import {
   buildCiiDedupedReportsTraceQuery,
   GET_VESSEL_CII_CONTEXT_QUERY,
   resolveTenantFuelConfig,
-  toFiniteNumber,
-  type CiiFuelConfigEntry,
 } from "../cii/engine.js";
 import {
   getTenantPostgresUrl,
@@ -23,51 +26,6 @@ import {
 } from "./shared.js";
 
 const log = createLogger("mcp-emission-engineer:trace-cii-calculation-inputs");
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function readJsonNumber(data: Record<string, unknown>, tag: string): number | null {
-  const raw = data[tag];
-
-  if (raw === undefined || raw === null || raw === "") {
-    return null;
-  }
-
-  return toFiniteNumber(raw);
-}
-
-/** Matches `buildPreferredGroupExpression` / SQL CASE: first tag group with any non-null value wins. */
-function preferredGroupSum(data: Record<string, unknown>, tagGroups: string[][]): number {
-  for (const group of tagGroups) {
-    const values = group.map((tag) => readJsonNumber(data, tag));
-    const hasAny = values.some((value) => value !== null);
-
-    if (hasAny) {
-      return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-    }
-  }
-
-  return 0;
-}
-
-function fuelTotalsForReport(
-  noonreportdata: unknown,
-  fuelEntries: CiiFuelConfigEntry[],
-): Record<string, number> {
-  if (!isRecord(noonreportdata)) {
-    return {};
-  }
-
-  const totals: Record<string, number> = {};
-
-  for (const entry of fuelEntries) {
-    totals[entry.type] = preferredGroupSum(noonreportdata, entry.tagGroups);
-  }
-
-  return totals;
-}
 
 export function registerTraceCiiCalculationInputsTool(server: McpServer): void {
   server.tool(
@@ -125,26 +83,13 @@ export function registerTraceCiiCalculationInputsTool(server: McpServer): void {
         }>(traceQuery, [vessel.id, normalizedStart, normalizedEnd]);
 
         const reports = rows.map((row) => ({
-
           id: row.id,
           report_date_time_utc: row.report_date_time_utc,
           reporttype: row.reporttype,
           canonical_reporttype: row.canonical_reporttype,
           fuel_mt_by_type: fuelTotalsForReport(row.noonreportdata, fuelConfig.entries),
-          distance_nm: (() => {
-            if (!isRecord(row.noonreportdata)) {
-              return null;
-            }
-
-            const data = row.noonreportdata;
-            return (
-              toFiniteNumber(readJsonNumber(data, "Observed_Distance_GPS")) ??
-              toFiniteNumber(readJsonNumber(data, "Distance"))
-            );
-          })(),
-          me_running_hrs: isRecord(row.noonreportdata)
-            ? toFiniteNumber(readJsonNumber(row.noonreportdata, "ME_Running_Hrs"))
-            : null,
+          distance_nm: reportDistanceNm(row.noonreportdata),
+          me_running_hrs: reportMeRunningHrs(row.noonreportdata),
         }));
 
         return {
