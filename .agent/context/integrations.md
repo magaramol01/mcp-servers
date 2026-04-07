@@ -65,34 +65,55 @@ curl -X POST http://localhost:3000/mcp \
 
 ---
 
-## Primary Data Source
+## Primary Data Sources
 
-> Replace this section with your actual data source.
+### MongoDB
 
 | Field | Value |
 |-------|-------|
-| **Type** | MongoDB / PostgreSQL / REST API / etc. |
-| **Purpose** | [describe what data this source holds] |
-| **Access** | Read-only / Read-write |
-| **Connection** | Singleton in `shared/utils/src/<db>.ts` |
-| **Credential var** | `DATABASE_URI` (see `.agent/context/env.md`) |
+| **Type** | MongoDB |
+| **Purpose** | Vessel positions, fleet listings, and report analytics |
+| **Access** | Read-only from MCP tools |
+| **Connection** | Singleton in `shared/utils/src/mongodb.ts` |
+| **Credential var** | `MONGO_URI` |
+| **Used by** | `packages/mcp-vessel-tracker`, `packages/mcp-port-analytics` |
+
+### PostgreSQL
+
+| Field | Value |
+|-------|-------|
+| **Type** | PostgreSQL |
+| **Purpose** | Alert execution data and emission engineering workflows |
+| **Access** | Read-only from MCP tools |
+| **Connection** | Singleton in `shared/utils/src/postgres.ts` |
+| **Credential var** | `EMISSION_ENGINEER_POSTGRES_URL`, `ALERTS_SERVICE_POSTGRES_URL` |
+| **Used by** | `packages/mcp-emission-engineer`, `packages/mcp-alerts-service` |
 
 ---
 
 ## Additional Integrations
 
-> Add one entry per external system.
-
-### [Integration Name]
+### Google Cloud Storage
 
 | Field | Value |
 |-------|-------|
-| **Type** | REST API / gRPC / Message queue / etc. |
-| **Purpose** | [what it's used for] |
-| **Auth** | API key / OAuth / mTLS / etc. |
-| **Env var** | `INTEGRATION_API_KEY` |
-| **Base URL** | `INTEGRATION_API_URL` |
-| **Used by** | `packages/<server-name>` |
+| **Type** | Object storage |
+| **Purpose** | Source-of-truth storage for PDF technical documents before indexing |
+| **Auth** | Google service account credentials / ADC |
+| **Env var** | `GCS_BUCKET_NAME`, `GOOGLE_APPLICATION_CREDENTIALS` |
+| **Base URL** | Google Cloud Storage bucket endpoint (SDK-managed) |
+| **Used by** | `packages/mcp-technical-advisory` |
+
+### PageIndex
+
+| Field | Value |
+|-------|-------|
+| **Type** | Hosted document processing and chat API |
+| **Purpose** | Vectorless PDF indexing, tree generation, and document-grounded chat |
+| **Auth** | API key |
+| **Env var** | `PAGEINDEX_API_KEY` |
+| **Base URL** | `https://api.pageindex.ai` |
+| **Used by** | `packages/mcp-technical-advisory` |
 
 ---
 

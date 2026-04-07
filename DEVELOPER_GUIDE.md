@@ -96,7 +96,8 @@ mcp-servers/
 │           ├── logger.ts            ← Namespaced logger, respects LOG_LEVEL
 │           ├── errors.ts            ← McpError, ValidationError, NotFoundError
 │           ├── env.ts               ← requireEnv / optionalEnv helpers
-│           └── mongodb.ts           ← Singleton MongoDB connection
+│           ├── mongodb.ts           ← Singleton MongoDB connection
+│           └── postgres.ts          ← Shared PostgreSQL pool helper
 │
 ├── .changeset/                      ← Versioning metadata (auto-generated)
 ├── .github/
@@ -135,8 +136,10 @@ cp .env.example packages/mcp-alerts-service/.env
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MONGO_URI` | ✅ Yes | — | Full MongoDB connection string |
-| `DB_NAME` | ❌ No | `fo-shore` | Target database name |
+| `MONGO_URI` | ✅ Yes for Mongo-backed services | — | Full MongoDB connection string |
+| `DB_NAME` | ❌ No | `fo-shore` | Target MongoDB database name |
+| `EMISSION_ENGINEER_POSTGRES_URL` | ✅ Yes for `mcp-emission-engineer` | — | Base PostgreSQL URL for emission tools |
+| `ALERTS_SERVICE_POSTGRES_URL` | ✅ Yes for `mcp-alerts-service` | — | Base PostgreSQL URL; each request swaps the database path with the tool `tenant` |
 | `LOG_LEVEL` | ❌ No | `info` | `debug` / `info` / `warn` / `error` |
 
 ### Example `.env` for local development
@@ -144,6 +147,7 @@ cp .env.example packages/mcp-alerts-service/.env
 ```dotenv
 MONGO_URI=mongodb://localhost:27017
 DB_NAME=fo-shore
+ALERTS_SERVICE_POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/postgres
 LOG_LEVEL=debug
 ```
 
@@ -540,7 +544,7 @@ docker run --rm \
 ### Docker Compose (local stack)
 
 Create a `docker-compose.yml` at the repo root for spinning up all servers
-alongside MongoDB:
+alongside MongoDB and PostgreSQL:
 
 ```yaml
 services:
@@ -548,6 +552,13 @@ services:
     image: mongo:6
     ports:
       - "27017:27017"
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
 
   mcp-vessel-tracker:
     build:
@@ -572,9 +583,8 @@ services:
       context: .
       dockerfile: packages/mcp-alerts-service/Dockerfile
     environment:
-      MONGO_URI: mongodb://mongo:27017
-      DB_NAME: fo-shore
-    depends_on: [mongo]
+      ALERTS_SERVICE_POSTGRES_URL: postgresql://postgres:postgres@postgres:5432/postgres
+    depends_on: [postgres]
 ```
 
 ```bash

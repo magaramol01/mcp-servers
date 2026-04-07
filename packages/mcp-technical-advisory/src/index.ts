@@ -2,24 +2,18 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { resolve } from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import {
-  connectPostgres,
-  createLogger,
-  disconnectPostgres,
-  requireEnv,
-  toError,
-} from "@mcpkit/utils";
-import { MCP_SERVER_INSTRUCTIONS, registerAgentPlaybookSurface } from "./agent/playbook.js";
-import { createPostgresAlertsRepository } from "./repository/postgresAlertsRepository.js";
-import type { AlertsRepository } from "./repository/types.js";
-import { registerDescribeRulesTool } from "./tools/describeRules.js";
-import { registerGetRecentExecuteAlertsTool } from "./tools/getRecentExecuteAlerts.js";
+import { createLogger, requireEnv, toError } from "@mcpkit/utils";
+import { TechnicalAdvisoryRag } from "./rag.js";
+import { createMcpServer } from "./server.js";
 
-const log = createLogger("mcp-alerts-service");
+const log = createLogger("mcp-technical-advisory");
 const packageEnvPath = resolve(__dirname, "../.env");
+const defaultServiceAccountPath = resolve(
+  __dirname,
+  "../key/ssh-marine-5047e738d9ee.json",
+);
 const MCP_PATH = "/mcp";
 const DEFAULT_HOST = "0.0.0.0";
 const DEFAULT_PORT = 3000;
@@ -29,41 +23,40 @@ if (existsSync(packageEnvPath)) {
 }
 
 type SessionContext = {
-  server: McpServer;
   transport: StreamableHTTPServerTransport;
+  server: ReturnType<typeof createMcpServer>;
 };
 
+// MCP sessions are kept in memory for the lifetime of this process.
 const sessions = new Map<string, SessionContext>();
-let alertsRepository: AlertsRepository | null = null;
 let httpServer: ReturnType<typeof createServer> | null = null;
 let isShuttingDown = false;
+let ragService: TechnicalAdvisoryRag | null = null;
 
-function createMcpServer(): McpServer {
-  if (!alertsRepository) {
-    throw new Error("Alerts repository not initialized");
-  }
+type GcsLocationConfig = {
+  bucketName: string;
+  defaultPrefix?: string;
+  includesEmbeddedPrefix: boolean;
+};
 
-  const server = new McpServer(
-    {
-      name: "mcpkit/mcp-alerts-service",
-      version: "1.0.0",
-    },
-    { instructions: MCP_SERVER_INSTRUCTIONS },
-  );
-
-  registerAgentPlaybookSurface(server);
-  registerGetRecentExecuteAlertsTool(server, alertsRepository);
-  registerDescribeRulesTool(server, alertsRepository);
-
-  return server;
-}
-
+/**
+ * Resolves the host interface for the HTTP server.
+ *
+ * @returns Hostname or IP address to bind the MCP server to.
+ */
 function getHost(): string {
-  return process.env.ALERTS_SERVICE_HOST ?? process.env.HOST ?? DEFAULT_HOST;
+  return process.env.TECHNICAL_ADVISORY_HOST ?? process.env.HOST ?? DEFAULT_HOST;
 }
 
+/**
+ * Resolves and validates the TCP port used by the HTTP server.
+ *
+ * @returns Numeric port between 1 and 65535.
+ * @throws Error When the configured port is invalid.
+ */
 function getPort(): number {
-  const rawPort = process.env.ALERTS_SERVICE_PORT ?? process.env.PORT ?? String(DEFAULT_PORT);
+  const rawPort =
+    process.env.TECHNICAL_ADVISORY_PORT ?? process.env.PORT ?? String(DEFAULT_PORT);
   const port = Number.parseInt(rawPort, 10);
 
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
@@ -73,11 +66,93 @@ function getPort(): number {
   return port;
 }
 
+/**
+ * Resolves the Google credentials file path used by the GCS client.
+ * An explicit environment variable wins; otherwise the repo-local fallback key
+ * is used when present.
+ *
+ * @returns Absolute credentials path or `undefined` to rely on ambient auth.
+ */
+function resolveGoogleApplicationCredentials(): string | undefined {
+  const configuredPath = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+
+  if (configuredPath) {
+    return configuredPath;
+  }
+
+  if (existsSync(defaultServiceAccountPath)) {
+    return defaultServiceAccountPath;
+  }
+
+  return undefined;
+}
+
+/**
+ * Normalizes an optional GCS prefix so leading slashes are stripped and empty
+ * strings are treated as absent.
+ *
+ * @param prefix Optional prefix value from env or parsed bucket path.
+ * @returns Normalized prefix or `undefined`.
+ */
+function normalizeGcsPrefix(prefix?: string): string | undefined {
+  const normalizedPrefix = prefix?.trim().replace(/^\/+/, "");
+  return normalizedPrefix ? normalizedPrefix : undefined;
+}
+
+/**
+ * Accepts either a plain bucket name or a `gs://bucket/prefix` style value and
+ * converts it into the bucket + default prefix pair used internally.
+ *
+ * @param rawBucketReference Configured GCS bucket reference.
+ * @param configuredPrefix Optional explicit prefix override from env.
+ * @returns Parsed bucket configuration for the RAG service.
+ */
+function resolveGcsLocationConfig(
+  rawBucketReference: string,
+  configuredPrefix?: string,
+): GcsLocationConfig {
+  const normalizedReference = rawBucketReference.trim().replace(/^gs:\/\//, "");
+
+  if (!normalizedReference) {
+    throw new Error("GCS_BUCKET_NAME must not be empty");
+  }
+
+  const separatorIndex = normalizedReference.indexOf("/");
+  const bucketName =
+    separatorIndex === -1
+      ? normalizedReference
+      : normalizedReference.slice(0, separatorIndex);
+  const embeddedPrefix =
+    separatorIndex === -1 ? undefined : normalizedReference.slice(separatorIndex + 1);
+
+  if (!bucketName) {
+    throw new Error(`Invalid GCS bucket reference: ${rawBucketReference}`);
+  }
+
+  return {
+    bucketName,
+    defaultPrefix: normalizeGcsPrefix(configuredPrefix) ?? normalizeGcsPrefix(embeddedPrefix),
+    includesEmbeddedPrefix: separatorIndex !== -1,
+  };
+}
+
+/**
+ * Extracts the current MCP session id from request headers.
+ *
+ * @param req Incoming HTTP request.
+ * @returns Session id when present.
+ */
 function getSessionId(req: IncomingMessage): string | undefined {
   const value = req.headers["mcp-session-id"];
   return Array.isArray(value) ? value[0] : value;
 }
 
+/**
+ * Detects whether a request body contains an MCP initialize request.
+ *
+ * @param body Parsed JSON request body.
+ * @returns `true` when the payload initializes a new MCP session.
+ */
 function isInitializePayload(body: unknown): boolean {
   if (Array.isArray(body)) {
     return body.some((message) => isInitializeRequest(message));
@@ -86,6 +161,12 @@ function isInitializePayload(body: unknown): boolean {
   return isInitializeRequest(body);
 }
 
+/**
+ * Reads and parses the JSON body for an incoming HTTP request.
+ *
+ * @param req Incoming HTTP request.
+ * @returns Parsed JSON payload or `undefined` when the body is empty.
+ */
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
 
@@ -102,6 +183,13 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return JSON.parse(rawBody);
 }
 
+/**
+ * Sends a plain JSON response when the transport does not already own the socket.
+ *
+ * @param res HTTP response object.
+ * @param statusCode HTTP status code to send.
+ * @param payload Serializable JSON payload.
+ */
 function sendJson(
   res: ServerResponse,
   statusCode: number,
@@ -116,6 +204,14 @@ function sendJson(
   res.end(JSON.stringify(payload));
 }
 
+/**
+ * Sends a JSON-RPC error response for transport-level failures.
+ *
+ * @param res HTTP response object.
+ * @param statusCode HTTP status code to send.
+ * @param code JSON-RPC error code.
+ * @param message Human-readable error message.
+ */
 function sendJsonRpcError(
   res: ServerResponse,
   statusCode: number,
@@ -129,6 +225,13 @@ function sendJsonRpcError(
   });
 }
 
+/**
+ * Sends a plain-text response for simple HTTP error cases.
+ *
+ * @param res HTTP response object.
+ * @param statusCode HTTP status code to send.
+ * @param message Response text.
+ */
 function sendText(res: ServerResponse, statusCode: number, message: string): void {
   if (res.headersSent) {
     return;
@@ -139,6 +242,11 @@ function sendText(res: ServerResponse, statusCode: number, message: string): voi
   res.end(message);
 }
 
+/**
+ * Closes every active MCP session during shutdown.
+ *
+ * @returns Promise that resolves once all transports and server instances close.
+ */
 async function closeAllSessions(): Promise<void> {
   const activeSessions = Array.from(sessions.entries());
 
@@ -167,6 +275,13 @@ async function closeAllSessions(): Promise<void> {
   );
 }
 
+/**
+ * Handles POST requests to `/mcp`, either routing an existing session request
+ * or initializing a brand-new MCP session.
+ *
+ * @param req Incoming HTTP request.
+ * @param res Outgoing HTTP response.
+ */
 async function handlePostRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJsonBody(req);
   const sessionId = getSessionId(req);
@@ -193,8 +308,13 @@ async function handlePostRequest(req: IncomingMessage, res: ServerResponse): Pro
     return;
   }
 
+  if (!ragService) {
+    throw new Error("Technical advisory RAG service is not initialized");
+  }
+
   let context: SessionContext | undefined;
 
+  // Each initialized MCP session gets its own transport and server instance.
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: (newSessionId) => {
@@ -223,7 +343,7 @@ async function handlePostRequest(req: IncomingMessage, res: ServerResponse): Pro
   };
 
   context = {
-    server: createMcpServer(),
+    server: createMcpServer(ragService),
     transport,
   };
 
@@ -231,6 +351,12 @@ async function handlePostRequest(req: IncomingMessage, res: ServerResponse): Pro
   await transport.handleRequest(req, res, body);
 }
 
+/**
+ * Handles GET and DELETE requests for an existing MCP session.
+ *
+ * @param req Incoming HTTP request.
+ * @param res Outgoing HTTP response.
+ */
 async function handleSessionRequest(
   req: IncomingMessage,
   res: ServerResponse,
@@ -252,6 +378,12 @@ async function handleSessionRequest(
   await context.transport.handleRequest(req, res);
 }
 
+/**
+ * Top-level HTTP router for the Streamable HTTP MCP endpoint.
+ *
+ * @param req Incoming HTTP request.
+ * @param res Outgoing HTTP response.
+ */
 async function handleHttpRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   try {
     const host = req.headers.host ?? "localhost";
@@ -292,6 +424,11 @@ async function handleHttpRequest(req: IncomingMessage, res: ServerResponse): Pro
   }
 }
 
+/**
+ * Stops the HTTP server and tears down all active MCP sessions.
+ *
+ * @param signal Human-readable shutdown trigger used for logging.
+ */
 async function shutdown(signal: string): Promise<void> {
   if (isShuttingDown) {
     return;
@@ -314,21 +451,57 @@ async function shutdown(signal: string): Promise<void> {
   }
 
   await closeAllSessions();
-  await disconnectPostgres();
 }
 
+/**
+ * Bootstraps configuration, constructs the shared RAG service, and starts the
+ * Streamable HTTP MCP server.
+ */
 async function main(): Promise<void> {
-  const postgresUrl = requireEnv("ALERTS_SERVICE_POSTGRES_URL");
+  const pageIndexApiKey = requireEnv("PAGEINDEX_API_KEY");
+  const rawGcsBucketName = requireEnv("GCS_BUCKET_NAME");
+  const gcsLocation = resolveGcsLocationConfig(
+    rawGcsBucketName,
+    process.env.TECHNICAL_ADVISORY_GCS_PREFIX,
+  );
+  const googleApplicationCredentials = resolveGoogleApplicationCredentials();
   const host = getHost();
   const port = getPort();
 
-  alertsRepository = createPostgresAlertsRepository({
-    basePostgresUrl: postgresUrl,
+  if (gcsLocation.includesEmbeddedPrefix) {
+    log.warn(
+      "GCS_BUCKET_NAME included a path. Using the bucket portion and treating the rest as the default prefix.",
+      {
+        bucketName: gcsLocation.bucketName,
+        defaultPrefix: gcsLocation.defaultPrefix ?? null,
+      },
+    );
+  }
+
+  if (gcsLocation.defaultPrefix) {
+    log.info("Using default GCS document prefix", {
+      prefix: gcsLocation.defaultPrefix,
+    });
+  }
+
+  if (googleApplicationCredentials) {
+    log.info("Using Google Cloud credentials file", {
+      path: googleApplicationCredentials,
+    });
+  } else {
+    log.warn(
+      "No Google Cloud credentials file configured. The server will rely on ambient Google credentials.",
+    );
+  }
+
+  ragService = new TechnicalAdvisoryRag({
+    pageIndexApiKey,
+    gcsBucketName: gcsLocation.bucketName,
+    defaultGcsPrefix: gcsLocation.defaultPrefix,
+    googleApplicationCredentials,
   });
 
-  log.info("Starting mcp-alerts-service...");
-
-  await connectPostgres(postgresUrl);
+  log.info("Starting mcp-technical-advisory...");
 
   httpServer = createServer((req, res) => {
     void handleHttpRequest(req, res);
@@ -355,7 +528,7 @@ async function main(): Promise<void> {
     httpServer?.listen(port, host);
   });
 
-  log.info("mcp-alerts-service running on Streamable HTTP", {
+  log.info("mcp-technical-advisory running on Streamable HTTP", {
     url: `http://${host}:${port}${MCP_PATH}`,
   });
 }

@@ -32,3 +32,6 @@ pnpm-debug.log*
 
 # codex
 .codex
+
+# Local credential files
+packages/mcp-technical-advisory/key/
