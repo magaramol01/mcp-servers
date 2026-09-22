@@ -1,0 +1,25 @@
+{
+  "name": "@mcpkit/mcp-voyage-management",
+  "version": "1.0.0",
+  "description": "MCP server for Voyage Agent's tools that reach Voyage Management Service and Reports Agent — see VPM_2.0/Plan/mcp-voyage-management-tools-plan.md for tool scope.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mcpkit/utils": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.10.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@mcpkit/tsconfig": "workspace:*",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.6.3"
+  }
+}
