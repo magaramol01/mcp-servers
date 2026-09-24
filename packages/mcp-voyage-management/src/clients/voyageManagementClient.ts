@@ -55,11 +55,27 @@ export class VoyageManagementClient {
     return this.http.get<unknown>(`/voyages/${encodeURIComponent(String(voyageId))}`, actor);
   }
 
-  /** `GET /live-tracking/travelled-path?voyageId=&skip=` — ascending by timestamp; the last element is the most recent known position. */
-  getTravelledPath(actor: Actor, voyageId: number | string, skip?: number): Promise<TravelledPathPoint[]> {
+  /**
+   * `GET /live-tracking/travelled-path?voyageId=&skip=&hours=&limit=` —
+   * ascending by timestamp; the last element is the most recent known
+   * position. `hours`/`limit` are additive, opt-in refinements VMS added
+   * alongside the original `skip`-only downsampling (both undefined here
+   * reproduce the exact prior request): `limit` returns the true last N
+   * packets (accurate "just the latest point(s)"), `hours` narrows to the
+   * last N hours of track (a bounded-duration fetch instead of the whole
+   * current-journey segment).
+   */
+  getTravelledPath(
+    actor: Actor,
+    voyageId: number | string,
+    skip?: number,
+    options?: { hours?: number; limit?: number }
+  ): Promise<TravelledPathPoint[]> {
     return this.http.get<TravelledPathPoint[]>("/live-tracking/travelled-path", actor, {
       voyageId: String(voyageId),
       skip,
+      hours: options?.hours,
+      limit: options?.limit,
     });
   }
 }
